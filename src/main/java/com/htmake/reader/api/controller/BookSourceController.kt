@@ -364,7 +364,7 @@ class BookSourceController(coroutineContext: CoroutineContext): BaseController(c
         }
 
         launch(Dispatchers.IO) {
-            webClient.getAbs(url).timeout(3000).send {
+            webClient.getAbs(url).timeout(60000).send {
                 var body = it.result()?.bodyAsString()
                 if (body != null) {
                     context.success(returnData.setData(arrayListOf(body)))

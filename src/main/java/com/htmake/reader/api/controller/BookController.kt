@@ -196,7 +196,7 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
         }
 
         launch(Dispatchers.IO) {
-            webClient.getAbs(coverUrl).timeout(3000).send {
+            webClient.getAbs(coverUrl).timeout(60000).send {
                 var bodyBytes = it.result()?.bodyAsBuffer()?.getBytes()
                 if (bodyBytes != null) {
                     var res = context.response().putHeader("Cache-Control", "86400")
