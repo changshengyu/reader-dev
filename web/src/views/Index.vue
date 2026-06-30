@@ -674,6 +674,8 @@
       :top="this.collapseMenu ? '0' : '15vh'"
       :fullscreen="collapseMenu"
       :class="isWebApp && !isNight ? 'status-bar-light-bg' : ''"
+      :close-on-click-modal="!isSavingSourceList"
+      :close-on-press-escape="!isSavingSourceList"
       v-if="$store.getters.isNormalPage"
     >
       <div class="source-container source-list-container">
@@ -697,6 +699,7 @@
           :indeterminate="isIndeterminate"
           v-model="checkAll"
           @change="handleCheckAllChange"
+          :disabled="isSavingSourceList"
           border
           size="medium"
           class="float-left"
@@ -705,13 +708,18 @@
         <span class="check-tip">已选择 {{ checkedSourceIndex.length }} 个</span>
         <el-button
           size="medium"
+          :disabled="isSavingSourceList"
           @click="
             showImportSourceDialog = false;
             checkedSourceIndex = [];
           "
           >取消</el-button
         >
-        <el-button size="medium" type="primary" @click="saveSourceList"
+        <el-button
+          size="medium"
+          type="primary"
+          :loading="isSavingSourceList"
+          @click="saveSourceList"
           >确定</el-button
         >
       </div>
@@ -1056,6 +1064,7 @@ export default {
       importSourceList: [],
       showImportSourceDialog: false,
       isImportRssSource: false,
+      isSavingSourceList: false,
       checkAll: false,
       isIndeterminate: false,
       checkedSourceIndex: [],
@@ -1908,6 +1917,9 @@ export default {
       return "   " + tags.join("  ");
     },
     saveSourceList() {
+      if (this.isSavingSourceList) {
+        return;
+      }
       if (!this.$store.state.connected) {
         this.$message.error("后端未连接");
         return;
@@ -1919,34 +1931,39 @@ export default {
       const sourceList = this.checkedSourceIndex.map(
         v => this.importSourceList[v]
       );
+      this.isSavingSourceList = true;
       Axios.post(
         this.api +
           (this.isImportRssSource ? "/saveRssSources" : "/saveBookSources"),
         sourceList
-      ).then(
-        res => {
-          if (res.data.isSuccess) {
-            //
-            this.$message.success(
-              this.isImportRssSource ? "导入RSS源成功" : "导入书源成功"
-            );
-            if (this.isImportRssSource) {
-              this.loadRssSources(true);
-            } else {
-              this.loadBookSource(true);
+      )
+        .then(
+          res => {
+            if (res.data.isSuccess) {
+              //
+              this.$message.success(
+                this.isImportRssSource ? "导入RSS源成功" : "导入书源成功"
+              );
+              if (this.isImportRssSource) {
+                this.loadRssSources(true);
+              } else {
+                this.loadBookSource(true);
+              }
+              this.showImportSourceDialog = false;
+              this.isImportRssSource = false;
+              this.checkedSourceIndex = [];
             }
-            this.showImportSourceDialog = false;
-            this.isImportRssSource = false;
-            this.checkedSourceIndex = [];
+          },
+          error => {
+            this.$message.error(
+              (this.isImportRssSource ? "导入RSS源失败 " : "导入书源失败 ") +
+                (error && error.toString())
+            );
           }
-        },
-        error => {
-          this.$message.error(
-            (this.isImportRssSource ? "导入RSS源失败 " : "导入书源失败 ") +
-              (error && error.toString())
-          );
-        }
-      );
+        )
+        .finally(() => {
+          this.isSavingSourceList = false;
+        });
     },
     isBookSourceSelectable(bookSource) {
       const res = [];
