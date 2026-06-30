@@ -146,6 +146,10 @@ application {
     mainClassName = "com.htmake.reader.ReaderUIApplicationKt"
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    main = "com.htmake.reader.ReaderApplicationKt"
+}
+
 tasks.create<io.github.fvarrui.javapackager.gradle.PackageTask>("buildReader"){
     dependsOn("build")
 	// mandatory

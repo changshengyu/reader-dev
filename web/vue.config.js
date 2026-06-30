@@ -84,7 +84,13 @@ module.exports = {
   publicPath: "./",
   productionSourceMap: false,
   devServer: {
-    port: 8081
+    port: 8081,
+    proxy: {
+      "/reader3": {
+        target: "http://localhost:8080",
+        changeOrigin: true
+      }
+    }
   },
   // 编译依赖为 es5
   transpileDependencies: ["element-ui", "codejar", "vue-lazyload"],

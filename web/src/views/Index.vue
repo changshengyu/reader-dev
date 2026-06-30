@@ -1794,49 +1794,76 @@ export default {
         this.currentUserName + "@lastRemoteSourceUrl",
         ""
       );
+      let remoteSourceUrl = "";
+      let sourceList = [];
       const res = await this.$prompt("请输入远程书源链接", "导入远程书源文件", {
         inputValue: lastRemoteSourceUrl || "",
         confirmButtonText: "确定",
-        cancelButtonText: "取消"
+        cancelButtonText: "取消",
+        inputValidator: value => {
+          return !!(value && value.trim()) || "请输入远程书源链接";
+        },
+        beforeClose: (action, instance, done) => {
+          if (instance.confirmButtonLoading) {
+            return;
+          }
+          if (action !== "confirm") {
+            done();
+            return;
+          }
+          remoteSourceUrl = instance.inputValue.trim();
+          instance.confirmButtonLoading = true;
+          instance.confirmButtonText = "读取中...";
+          Axios.post(this.api + "/readRemoteSourceFile", {
+            url: remoteSourceUrl
+          })
+            .then(response => {
+              if (!response.data.isSuccess) {
+                this.$message.error(
+                  response.data.errorMsg || "读取远程书源文件内容失败"
+                );
+                return;
+              }
+              sourceList = [];
+              response.data.data.forEach(v => {
+                try {
+                  const data = JSON.parse(v);
+                  if (Array.isArray(data)) {
+                    sourceList = sourceList.concat(data);
+                  }
+                } catch (error) {
+                  //
+                }
+              });
+              if (sourceList.length) {
+                setCache(
+                  this.currentUserName + "@lastRemoteSourceUrl",
+                  remoteSourceUrl
+                );
+                done();
+              } else {
+                this.$message.error("远程书源文件错误");
+              }
+            })
+            .catch(error => {
+              this.$message.error(
+                "读取远程书源文件内容失败 " + (error && error.toString())
+              );
+            })
+            .finally(() => {
+              instance.confirmButtonLoading = false;
+              instance.confirmButtonText = "确定";
+            });
+        }
       }).catch(() => {
         return false;
       });
       if (!res || !res.value) {
         return;
       }
-      Axios.post(this.api + "/readRemoteSourceFile", {
-        url: res.value
-      }).then(
-        res => {
-          if (res.data.isSuccess) {
-            setCache(this.currentUserName + "@lastRemoteSourceUrl", res.value);
-            //
-            let sourceList = [];
-            res.data.data.forEach(v => {
-              try {
-                const data = JSON.parse(v);
-                if (Array.isArray(data)) {
-                  sourceList = sourceList.concat(data);
-                }
-              } catch (error) {
-                //
-              }
-            });
-            if (sourceList.length) {
-              this.importSourceList = sourceList;
-              this.showImportSourceDialog = true;
-              this.isImportRssSource = false;
-            } else {
-              this.$message.error("远程书源文件错误");
-            }
-          }
-        },
-        error => {
-          this.$message.error(
-            "读取远程书源文件内容失败 " + (error && error.toString())
-          );
-        }
-      );
+      this.importSourceList = sourceList;
+      this.showImportSourceDialog = true;
+      this.isImportRssSource = false;
     },
     handleCheckAllChange(val) {
       let hasFilterd = false;
